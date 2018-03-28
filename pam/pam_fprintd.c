@@ -26,6 +26,8 @@
 #include <sys/types.h>
 #include <string.h>
 #include <syslog.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include <glib/gi18n-lib.h>
 #include <dbus/dbus-glib-bindings.h>
@@ -270,7 +272,7 @@ static gboolean receive_keyboard_cb (GIOChannel *channel, GIOCondition  conditio
 	verify_data *data = user_data;
 
 	data->timed_out = TRUE;
-	send_info_msg (data->pamh, "Use keyboard");
+	send_info_msg (data->pamh, "Use keyboard, stdin will pass to next pam");
 	g_main_loop_quit (data->loop);
 
 	return FALSE;
@@ -451,7 +453,14 @@ static int do_auth(pam_handle_t *pamh, const char *username)
 	gboolean have_prints;
 	gboolean has_multiple_devices;
 	int ret = PAM_AUTHINFO_UNAVAIL;
-
+	
+	// Disable password input
+	struct termios oldt;
+	tcgetattr(STDIN_FILENO, &oldt);
+	struct termios newt = oldt;
+	newt.c_lflag &= ~ECHO;
+	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+	
 	manager = create_manager (pamh, &connection, &loop);
 	if (manager == NULL)
 		return PAM_AUTHINFO_UNAVAIL;
@@ -477,6 +486,7 @@ static int do_auth(pam_handle_t *pamh, const char *username)
 	unref_loop (loop);
 	g_object_unref (dev);
 	close_and_unref (connection);
+	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 
 	return ret;
 }
