@@ -229,6 +229,7 @@ typedef struct {
 	gboolean is_swipe;
 	pam_handle_t *pamh;
 	GMainLoop *loop;
+	GIOChannel *channel;
 
 	char *driver;
 } verify_data;
@@ -261,10 +262,23 @@ static void verify_finger_selected(GObject *object, const char *finger_name, gpo
 	g_free (msg);
 }
 
+static gboolean receive_keyboard_cb (GIOChannel *channel, GIOCondition  condition, gpointer      user_data)
+{
+//	gchar* str = NULL;
+//	g_io_channel_read_chars(channel, str, 0, NULL, NULL);  
+	
+	verify_data *data = user_data;
+
+	data->timed_out = TRUE;
+	send_info_msg (data->pamh, "Use keyboard");
+	g_main_loop_quit (data->loop);
+
+	return FALSE;
+}
+
 static gboolean verify_timeout_cb (gpointer user_data)
 {
 	verify_data *data = user_data;
-
 	data->timed_out = TRUE;
 	send_info_msg (data->pamh, "Verification timed out");
 	g_main_loop_quit (data->loop);
@@ -311,12 +325,22 @@ static int do_verify(GMainLoop *loop, pam_handle_t *pamh, DBusGProxy *dev, gbool
 	ret = PAM_AUTH_ERR;
 
 	while (ret == PAM_AUTH_ERR && data->max_tries > 0) {
-		GSource *source;
+		GSource *timeoutSource, *keyboardSource;
+		GIOChannel* channel;
 
 		/* Set up the timeout on our non-default context */
-		source = g_timeout_source_new_seconds (timeout);
-		g_source_attach (source, g_main_loop_get_context (loop));
-		g_source_set_callback (source, verify_timeout_cb, data, NULL);
+		timeoutSource = g_timeout_source_new_seconds (timeout);
+		g_source_attach (timeoutSource, g_main_loop_get_context (loop));
+		g_source_set_callback (timeoutSource, verify_timeout_cb, data, NULL);
+
+		/* Set up the keyboard trigger */
+		channel = g_io_channel_unix_new(1);  
+		keyboardSource = g_io_create_watch(channel, G_IO_IN);  
+		data->channel = channel;
+		g_io_channel_unref(channel);  
+		g_source_attach(keyboardSource, g_main_loop_get_context (loop));  
+		g_source_set_callback(keyboardSource, (GSourceFunc)receive_keyboard_cb, data, NULL);  
+		g_source_unref(keyboardSource);  
 
 		data->timed_out = FALSE;
 
@@ -327,15 +351,15 @@ static int do_verify(GMainLoop *loop, pam_handle_t *pamh, DBusGProxy *dev, gbool
 			D(pamh, "VerifyStart failed: %s", error->message);
 			g_error_free (error);
 
-			g_source_destroy (source);
-			g_source_unref (source);
+			g_source_destroy (timeoutSource);
+			g_source_unref (timeoutSource);
 			break;
 		}
 
 		g_main_loop_run (loop);
 
-		g_source_destroy (source);
-		g_source_unref (source);
+		g_source_destroy (timeoutSource);
+		g_source_unref (timeoutSource);
 
 		/* Ignore errors from VerifyStop */
 		dbus_g_proxy_call (dev, "VerifyStop", NULL, G_TYPE_INVALID, G_TYPE_INVALID);
