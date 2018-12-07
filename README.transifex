@@ -4,7 +4,7 @@ Transifex.net Token Verification
 The list of tokens bellow guarantee the respective users to be able to enable 
 submission on components using the following repository url:
 
-ssh://git.freedesktop.org/git/libfprint/fprintd
+https://gitlab.freedesktop.org/libfprint/fprintd/
 
 Tokens:
 

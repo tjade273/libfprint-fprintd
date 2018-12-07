@@ -1,0 +1,34 @@
+image: fedora:rawhide
+
+variables:
+  DEPENDENCIES: dbus-glib-devel pam-devel polkit-devel
+                gtk-doc meson intltool autoconf automake libtool
+                gcc gcc-c++ glibc-devel make
+  DEPENDENCIES_STABLE: $DEPENDENCIES libfprint-devel
+  DEPENDENCIES_DEV: $DEPENDENCIES git
+  # Sync'ed up with https://gitlab.freedesktop.org/libfprint/libfprint/blob/master/.gitlab-ci.yml
+  DEPENDENCIES_LIBFPRINT: libusb1-devel glib2-devel nss-devel pixman-devel systemd
+                          meson gtk-doc gcc gcc-c++ glibc-devel libX11-devel
+                          libXv-devel
+
+build_stable:
+  before_script:
+    - dnf update -y --nogpgcheck && dnf install -y --nogpgcheck $DEPENDENCIES_STABLE
+  script:
+    - ./autogen.sh --disable-dependency-tracking
+    - make
+    - make install
+
+build_dev:
+  before_script:
+    - dnf update -y --nogpgcheck && dnf install -y --nogpgcheck $DEPENDENCIES_LIBFPRINT $DEPENDENCIES_DEV
+    - git clone https://gitlab.freedesktop.org/libfprint/libfprint.git
+    - cd libfprint
+    - meson . _build --prefix=/usr
+    - ninja -C _build
+    - ninja -C _build install
+    - cd ..
+  script:
+    - ./autogen.sh --disable-dependency-tracking
+    - make
+    - make install

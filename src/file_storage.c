@@ -95,16 +95,16 @@ int file_storage_print_data_save(struct fp_print_data *data,
 	enum fp_finger finger, const char *username)
 {
 	GError *err = NULL;
-	char *path, *dirpath, *buf;
+	char *path, *dirpath;
 	size_t len;
 	int r;
 	char *base_store = NULL;
+	char *buf = NULL;
 
 	r = file_storage_get_basestore_for_username(username, &base_store);
 
-	if (r < 0) {
-		return r;
-	}
+	if (r < 0)
+		goto out;
 
 	len = fp_print_data_get_data(data, (guchar **) &buf);
 	if (!len) {
@@ -115,27 +115,27 @@ int file_storage_print_data_save(struct fp_print_data *data,
 	path = __get_path_to_print(fp_print_data_get_driver_id(data), fp_print_data_get_devtype(data), finger, base_store);
 	dirpath = g_path_get_dirname(path);
 	r = g_mkdir_with_parents(dirpath, DIR_PERMS);
+	g_free(dirpath);
 	if (r < 0) {
-		g_free(base_store);
 		g_free(path);
-		g_free(dirpath);
-		return r;
+		goto out;
 	}
 
 	//fp_dbg("saving to %s", path);
 	g_file_set_contents(path, buf, len, &err);
-	free(buf);
-	g_free(dirpath);
 	g_free(path);
 	if (err) {
 		r = err->code;
 		//fp_err("save failed: %s", err->message);
 		g_error_free(err);
 		/* FIXME interpret error codes */
-		return r;
+		goto out;
 	}
 
-	return 0;
+out:
+	g_clear_pointer(&buf, free);
+	g_clear_pointer(&base_store, g_free);
+	return r;
 }
 
 static int load_from_file(char *path, struct fp_print_data **data)

@@ -1,6 +1,15 @@
 This file lists notable changes in each release. For the full history of all
 changes, see ChangeLog.
 
+version 0.8.1:
+- Fix build when builddir != srcdir
+- Fix possible crash on exit
+- Avoid warnings in copy/paste header
+- Sandbox fprintd daemon more
+- Update website address
+- Minimise debug output
+- Updated translations
+
 version 0.8.0:
 - Lockdown the daemon to minimise potential security issues
 - Don't wake up readers when there's no enrolled fingerprints

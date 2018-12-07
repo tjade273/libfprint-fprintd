@@ -6,7 +6,7 @@
 <policyconfig>
 
   <vendor>The FPrint Project</vendor>
-  <vendor_url>http://reactivated.net/fprint/</vendor_url>
+  <vendor_url>https://fprint.freedesktop.org/</vendor_url>
   <icon_name>fprint</icon_name>
 
   <action id="net.reactivated.fprint.device.verify">

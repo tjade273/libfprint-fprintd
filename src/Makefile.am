@@ -11,6 +11,7 @@ AM_CFLAGS =						\
 	$(WARN_CFLAGS)					\
 	$(FPRINT_CFLAGS)				\
 	$(DAEMON_CFLAGS)				\
+	-DG_LOG_DOMAIN=\""fprintd"\"			\
 	-DLOCALEDIR=\""$(datadir)/locale"\"		\
 	-DPLUGINDIR=\""$(libdir)/fprintd/modules"\"	\
 	-DFILE_STORAGE_PATH=\""$(localstatedir)/lib/fprint"\"
@@ -24,6 +25,7 @@ libfprintd_la_LDFLAGS = -no-undefined
 
 fprintd_SOURCES =				\
 	main.c					\
+	loop.c loop.h				\
 	file_storage.c file_storage.h storage.h
 fprintd_LDADD = libfprintd.la
 
